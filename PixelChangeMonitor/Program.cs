@@ -8,6 +8,7 @@ using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.IO;
 using System.Management.Automation;
+using System.Windows.Forms;
 
 namespace PixelChangeMonitor
 {
@@ -23,7 +24,7 @@ namespace PixelChangeMonitor
             Bitmap screenPixel = new Bitmap(1, 1, PixelFormat.Format32bppArgb);
 
             Point location = Point.Empty;
-            GetCursorPos(ref location);
+            GetCursorPos(ref location); //location now reflects cursor's position
 
             using (Graphics gdest = Graphics.FromImage(screenPixel))
             {
@@ -51,12 +52,16 @@ namespace PixelChangeMonitor
             while (initial == GetColorAtCursor());
 
             //Color changed, push IFTTT notification
-            string key = File.ReadAllText("ifttt_key.txt"); //Gets service key from external file
+            string key = File.ReadAllText("ifttt_key.txt"); //Gets webhook url from external file
 
-            PowerShell.Create() //Execute request that hooks into IFTTT
+            var results = PowerShell.Create() //Execute request that hooks into IFTTT
                 .AddCommand("Invoke-WebRequest")
-                .AddParameter("Uri", $"https://maker.ifttt.com/trigger/pixel_changed/with/key/{key}")
+                .AddParameter("Uri", key)
                 .Invoke();
+
+            var msg = results[0].BaseObject.ToString();
+            if (!msg.Equals("Congratulations! You've fired the pixel_changed event"))
+                MessageBox.Show("Something went wrong notifying IFTTT.", "IFTTT Connection Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 }
